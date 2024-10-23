@@ -4,10 +4,13 @@ services:
     image           : postgres:16.2
     restart         : always
     volumes:
-      - ./postgres:/var/lib/postgresql/data
+      - orders_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     environment: 
-    - POSTGRES_USER=postgres
-    - POSTGRES_PASSWORD=sasha88
-    - POSTGRES_DB=ordersdb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=sasha88
+      - POSTGRES_DB=ordersdb
+
+volumes:
+  orders_data:
