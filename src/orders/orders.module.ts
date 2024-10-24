@@ -11,17 +11,17 @@ import { envs, PRODUCT_SERVICE } from 'src/config';
   imports : [
     ClientsModule.register([
 
-      {
-        name : PRODUCT_SERVICE,
-        transport : Transport.TCP,
-        options : 
-        {
-          host : envs.productsMicroServiceHost,
-          port : envs.productsMicroServicePort
+      // {
+      //   name : PRODUCT_SERVICE,
+      //   transport : Transport.TCP,
+      //   options : 
+      //   {
+      //     host : envs.productsMicroServiceHost,
+      //     port : envs.productsMicroServicePort
 
-        }
+      //   }
 
-      }
+      // }
 
 
 
