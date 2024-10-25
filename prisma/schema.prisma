@@ -1,3 +1,9 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -15,15 +21,17 @@ enum OrderStatus {
 }
 
 model Order {
-  id             String      @id @default(uuid())
-  totalAmount    Float
-  totalItems     Int
+  id          String @id @default(uuid())
+  totalAmount Float
+  totalItems  Int
+
   status         OrderStatus @default(PENDING)
   paid           Boolean     @default(false)
   paidAt         DateTime?
   stripeChargeId String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   OrderItem    OrderItem[]
   OrderReceipt OrderReceipt?
@@ -40,12 +48,14 @@ model OrderItem {
 }
 
 model OrderReceipt {
-  id      String @id @default(uuid())
+  id String @id @default(uuid())
+
   order   Order  @relation(fields: [orderId], references: [id])
   orderId String @unique
+
   receiptUrl String
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
 
 }
