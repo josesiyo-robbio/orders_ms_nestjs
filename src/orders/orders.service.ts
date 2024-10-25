@@ -1,10 +1,7 @@
-import {
-  HttpStatus,
-  Inject,
-  Injectable,
-  Logger,
-  OnModuleInit,
-} from '@nestjs/common';
+
+
+
+import {HttpStatus,Inject,Injectable,Logger,OnModuleInit,} from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { PrismaClient } from '@prisma/client';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
@@ -14,40 +11,48 @@ import { NATS_SERVICE, PRODUCT_SERVICE } from 'src/config';
 import { firstValueFrom, throwError } from 'rxjs';
 import { OrderWithProducts } from './interfaces/order-with-produts.interface';
 
+
+
 @Injectable()
-export class OrdersService extends PrismaClient implements OnModuleInit {
+export class OrdersService extends PrismaClient implements OnModuleInit 
+{
   private readonly logger = new Logger('OrdersService');
 
-  constructor(@Inject(NATS_SERVICE) private readonly client: ClientProxy) {
+  constructor(@Inject(NATS_SERVICE) private readonly client: ClientProxy) 
+  {
     super();
   }
 
-  async onModuleInit() {
+
+  async onModuleInit() 
+  {
     await this.$connect();
     this.logger.log('Database connected');
   }
 
-  async create(createOrderDto: CreateOrderDto) {
-    try {
-      //1 Confirmar los ids de los productos
-      const productIds = createOrderDto.items.map((item) => item.productId);
-      const products: any[] = await firstValueFrom(
-        this.client.send({ cmd: 'validate_products' }, productIds),
-      );
 
-      //2. Cálculos de los valores
+  //create a order
+  async create(createOrderDto: CreateOrderDto) 
+  {
+    try 
+    {
+      const productsIds = createOrderDto.items.map((item) => item.productId);
+      const products: any[] = await firstValueFrom(this.client.send({ cmd: 'validate_products' }, productsIds));
+
       const totalAmount = createOrderDto.items.reduce((acc, orderItem) => {
-        const price = products.find(
-          (product) => product.id === orderItem.productId,
-        ).price;
-        return price * orderItem.quantity;
+        const product = products.find((product) => product.id === orderItem.productId);
+        const price = product ? product.price : 0; 
+        const itemTotal = price * orderItem.quantity;
+
+        console.log(`Producto ID: ${orderItem.productId}, Cantidad: ${orderItem.quantity}, Precio: ${price}, Subtotal: ${itemTotal}`);
+        return acc + itemTotal;
       }, 0);
 
-      const totalItems = createOrderDto.items.reduce((acc, orderItem) => {
-        return acc + orderItem.quantity;
-      }, 0);
 
-      //3. Crear una transacción de base de datos
+      const totalItems = createOrderDto.items.reduce((acc, orderItem) => { return acc + orderItem.quantity; }, 0);
+
+
+      //transassation db
       const order = await this.order.create({
         data: {
           totalAmount: totalAmount,
@@ -64,16 +69,17 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
             },
           },
         },
-        include: {
-          OrderItem: {
+        include : {
+          OrderItem : {
             select: {
               price: true,
               quantity: true,
               productId: true,
             },
-          },
-        },
+          }
+        }
       });
+
 
       return {
         ...order,
@@ -83,23 +89,23 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
             .name,
         })),
       };
-    } catch (error) {
+    }
+    catch (error) 
+    {
       throw new RpcException({
         status: HttpStatus.BAD_REQUEST,
-        message: 'Check logs',
-      });
+        message: 'Check logs'
+      }
+      );
     }
   }
 
-  async findAll(orderPaginationDto: OrderPaginationDto) {
-    const totalPages = await this.order.count({
-      where: {
-        status: orderPaginationDto.status,
-      },
-    });
 
-    const currentPage = orderPaginationDto.page;
-    const perPage = orderPaginationDto.limit;
+  async findAll(orderPaginationDto: OrderPaginationDto) 
+  {
+    const totalPages    = await this.order.count({ where: { status: orderPaginationDto.status },});
+    const currentPage   = orderPaginationDto.page;
+    const perPage       = orderPaginationDto.limit;
 
     return {
       data: await this.order.findMany({
@@ -117,6 +123,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     };
   }
 
+
   async findOne(id: string) {
     const order = await this.order.findFirst({
       where: { id },
@@ -131,7 +138,8 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
       },
     });
 
-    if (!order) {
+    if (!order) 
+    {
       throw new RpcException({
         status: HttpStatus.NOT_FOUND,
         message: `Order with id ${id} not found`,
@@ -139,9 +147,7 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     }
 
     const productIds = order.OrderItem.map((orderItem) => orderItem.productId);
-    const products: any[] = await firstValueFrom(
-      this.client.send({ cmd: 'validate_products' }, productIds),
-    );
+    const products: any[] = await firstValueFrom( this.client.send({ cmd: 'validate_products' }, productIds),);
 
     return {
       ...order,
@@ -153,11 +159,14 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     };
   }
 
-  async changeStatus(changeOrderStatusDto: ChangeOrderStatusDto) {
-    const { id, status } = changeOrderStatusDto;
 
+  async changeStatus(changeOrderStatusDto: ChangeOrderStatusDto) 
+  {
+    const { id, status } = changeOrderStatusDto;
     const order = await this.findOne(id);
-    if (order.status === status) {
+
+    if (order.status === status) 
+    {
       return order;
     }
 
@@ -167,8 +176,9 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     });
   }
 
-  async createPaymentSession(order: OrderWithProducts) {
 
+  async createPaymentSession(order: OrderWithProducts) 
+  {
     const paymentSession = await firstValueFrom(
       this.client.send('create.payment.session', {
         orderId: order.id,
@@ -180,14 +190,12 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
         }) ),
       }),
     );
-
     return paymentSession;
   }
 
 
-
-  async paidOrder( paidOrderDto: PaidOrderDto ) {
-
+  async paidOrder( paidOrderDto: PaidOrderDto ) 
+  {
     this.logger.log('Order Paid');
     this.logger.log(paidOrderDto);
 
