@@ -1,0 +1,52 @@
+# DEPENDENCIES
+FROM node:21-alpine3.19 AS dependencies
+
+WORKDIR /usr/src/app
+
+COPY package.json ./
+COPY package-lock.json ./
+
+RUN npm install
+
+
+
+# BUILDER
+FROM node:21-alpine3.19 AS builder
+
+ARG ORDERS_DATABASE_URL
+ENV DATABASE_URL=$ORDERS_DATABASE_URL
+
+WORKDIR /usr/src/app
+
+# COPY FROM dependencies ALL NODE MODULES
+COPY --from=dependencies /usr/src/app/node_modules ./node_modules
+
+# COPY SOURCE CODE AND PRISMA SCHEMA
+COPY . .
+
+
+# Generate Prisma Client
+RUN npx prisma migrate deploy
+RUN npx prisma generate
+
+# Build the application
+RUN npm run build
+
+# Clean unnecessary files for production
+RUN npm ci --only=production && npm cache clean --force
+
+# CREATE FINAL IMAGE
+FROM node:21-alpine3.19 AS prod
+
+WORKDIR /usr/src/app
+
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/dist ./dist
+
+ENV NODE_ENV=production
+
+USER node 
+
+EXPOSE 3000
+
+CMD ["node", "dist/main.js"]
